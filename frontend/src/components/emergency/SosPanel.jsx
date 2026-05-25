@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { PhoneCall, ShieldAlert, X } from 'lucide-react';
-import { activateSosRequest, resolveEmergencyRequest } from '../../services/emergencyService.js';
+import { MessageSquareWarning, PhoneCall, RotateCcw, ShieldAlert, X } from 'lucide-react';
+import {
+  activateSosRequest,
+  resolveEmergencyRequest,
+  retryEmergencySmsRequest,
+} from '../../services/emergencyService.js';
 import { emitSosAlert } from '../../sockets/socketClient.js';
 import { formatCoordinate, formatTimestamp } from '../../services/mapService.js';
 
@@ -8,6 +12,7 @@ function SosPanel({ dangerAssessment, isTracking, location, startTracking, token
   const [activeEmergency, setActiveEmergency] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [retryingSms, setRetryingSms] = useState(false);
   const [resolvedMessage, setResolvedMessage] = useState('');
 
   const activateSos = async () => {
@@ -73,6 +78,27 @@ function SosPanel({ dangerAssessment, isTracking, location, startTracking, token
     }
   };
 
+  const retrySms = async () => {
+    if (!activeEmergency) {
+      return;
+    }
+
+    setRetryingSms(true);
+    setError('');
+
+    try {
+      const response = await retryEmergencySmsRequest(activeEmergency._id);
+      setActiveEmergency(response.emergency);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Unable to retry SMS alerts.');
+    } finally {
+      setRetryingSms(false);
+    }
+  };
+
+  const sentCount = activeEmergency?.smsAlerts?.filter((alert) => alert.status === 'SENT').length || 0;
+  const failedCount = activeEmergency?.smsAlerts?.filter((alert) => alert.status !== 'SENT').length || 0;
+
   return (
     <section className="rounded-lg border border-red-200 bg-white p-5 shadow-soft">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -80,7 +106,7 @@ function SosPanel({ dangerAssessment, isTracking, location, startTracking, token
           <p className="text-sm font-semibold uppercase tracking-wide text-red-600">Emergency SOS</p>
           <h2 className="mt-1 text-xl font-bold text-slate-950">Instant guardian alert</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            SOS saves your emergency with live coordinates and broadcasts a realtime alert. SMS delivery is added in Step 8.
+            SOS saves your emergency, broadcasts realtime alerts, and sends SMS to trusted guardians when Twilio is configured.
           </p>
         </div>
         <button
@@ -120,7 +146,7 @@ function SosPanel({ dangerAssessment, isTracking, location, startTracking, token
             <p className="mt-5 text-sm font-bold uppercase tracking-wide text-red-600">SOS active</p>
             <h3 className="mt-1 text-2xl font-bold text-slate-950">{user?.name} may need help.</h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Emergency log created and realtime alert sent to the active guardian room.
+              Emergency log created, realtime alert sent, and guardian SMS alerts processed.
             </p>
 
             <dl className="mt-5 grid gap-3 rounded-lg bg-slate-50 p-4 text-sm">
@@ -145,11 +171,55 @@ function SosPanel({ dangerAssessment, isTracking, location, startTracking, token
             </dl>
 
             <div className="mt-5 rounded-md border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-slate-900">Guardians to notify</p>
-              <p className="mt-1 text-sm text-slate-600">
-                {activeEmergency.guardianContacts.length} trusted contact
-                {activeEmergency.guardianContacts.length === 1 ? '' : 's'} attached to this SOS event.
-              </p>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Guardian SMS alerts</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {sentCount} sent, {failedCount} pending or failed.
+                  </p>
+                </div>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-red-50 text-red-600">
+                  <MessageSquareWarning size={18} aria-hidden="true" />
+                </span>
+              </div>
+
+              {activeEmergency.smsAlerts?.length ? (
+                <div className="mt-4 space-y-2">
+                  {activeEmergency.smsAlerts.map((alert) => (
+                    <div key={`${alert.phoneNumber}-${alert.lastAttemptAt}`} className="rounded-md bg-slate-50 px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-semibold text-slate-900">{alert.guardianName || alert.phoneNumber}</span>
+                        <span
+                          className={`rounded-md px-2 py-1 text-xs font-bold ${
+                            alert.status === 'SENT'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-amber-50 text-amber-700'
+                          }`}
+                        >
+                          {alert.status}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {alert.phoneNumber} {alert.errorMessage ? `- ${alert.errorMessage}` : ''}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">No guardian contacts were attached to this emergency.</p>
+              )}
+
+              {failedCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={retrySms}
+                  disabled={retryingSms}
+                  className="mt-4 inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RotateCcw size={16} aria-hidden="true" />
+                  {retryingSms ? 'Retrying SMS' : 'Retry SMS Alerts'}
+                </button>
+              ) : null}
             </div>
 
             <button

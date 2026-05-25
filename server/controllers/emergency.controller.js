@@ -1,4 +1,5 @@
 import Emergency from '../models/Emergency.model.js';
+import { sendEmergencySmsAlerts } from '../services/twilio.service.js';
 import { createError } from '../utils/appError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -29,6 +30,12 @@ export const createSosEmergency = asyncHandler(async (req, res) => {
     guardianContacts: req.user.guardianContacts,
   });
 
+  emergency.smsAlerts = await sendEmergencySmsAlerts({
+    emergency,
+    user: req.user,
+  });
+  await emergency.save();
+
   res.status(201).json({
     success: true,
     emergency,
@@ -56,6 +63,29 @@ export const resolveEmergency = asyncHandler(async (req, res) => {
 
   emergency.status = req.body.status;
   emergency.resolvedAt = new Date();
+  await emergency.save();
+
+  res.status(200).json({
+    success: true,
+    emergency,
+  });
+});
+
+export const retryEmergencySms = asyncHandler(async (req, res) => {
+  const emergency = await Emergency.findOne({
+    _id: req.params.emergencyId,
+    user: req.user._id,
+  });
+
+  if (!emergency) {
+    throw createError('Emergency record not found', 404);
+  }
+
+  emergency.smsAlerts = await sendEmergencySmsAlerts({
+    emergency,
+    user: req.user,
+    onlyRetryable: true,
+  });
   await emergency.save();
 
   res.status(200).json({

@@ -85,8 +85,16 @@ function MapView({ destination, location, riskZones = [], routes = [], selectedR
       const map = L.map(containerRef.current, {
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
+        boxZoom: true,
+        doubleClickZoom: true,
+        dragging: true,
+        keyboard: true,
+        scrollWheelZoom: true,
+        tap: true,
+        touchZoom: true,
         zoomControl: true,
         attributionControl: true,
+        worldCopyJump: true,
       });
 
       L.tileLayer(OPEN_STREET_MAP_TILE_URL, {

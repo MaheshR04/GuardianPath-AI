@@ -25,6 +25,33 @@ const emergencyGuardianSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const smsAlertSchema = new mongoose.Schema(
+  {
+    guardianName: String,
+    phoneNumber: String,
+    relationship: String,
+    status: {
+      type: String,
+      enum: ['SENT', 'FAILED', 'SKIPPED'],
+      required: true,
+    },
+    messageSid: {
+      type: String,
+      default: '',
+    },
+    errorMessage: {
+      type: String,
+      default: '',
+    },
+    attempts: {
+      type: Number,
+      default: 0,
+    },
+    lastAttemptAt: Date,
+  },
+  { _id: false },
+);
+
 const emergencySchema = new mongoose.Schema(
   {
     user: {
@@ -60,6 +87,10 @@ const emergencySchema = new mongoose.Schema(
     },
     guardianContacts: {
       type: [emergencyGuardianSchema],
+      default: [],
+    },
+    smsAlerts: {
+      type: [smsAlertSchema],
       default: [],
     },
     resolvedAt: {

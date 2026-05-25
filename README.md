@@ -73,6 +73,14 @@ GuardianPath AI is an AI-powered real-time safety navigation and emergency respo
 - Resolve or cancel emergency status
 - Realtime `sos-alert` socket emit for guardian rooms
 
+## Step 8 Features
+
+- Twilio SMS service for trusted guardians
+- Emergency SMS includes a Google Maps location link
+- SMS status is saved on each emergency record
+- Failed or skipped SMS alerts can be retried
+- SOS still works safely when Twilio credentials are not configured
+
 ## Installation
 
 ```bash
@@ -100,6 +108,16 @@ The local `server/.env` file stores your MongoDB Atlas URI and development secre
 The map uses OpenStreetMap tiles through Leaflet, so no billing account or map token is required.
 Route planning uses public Nominatim and OSRM endpoints for MVP development, so avoid heavy automated request traffic.
 Location access works on `localhost` during development. In production, browser geolocation requires HTTPS.
+
+Twilio SMS requires real values in `server/.env`:
+
+```env
+TWILIO_ACCOUNT_SID=your_real_account_sid
+TWILIO_AUTH_TOKEN=your_real_auth_token
+TWILIO_PHONE_NUMBER=+1xxxxxxxxxx
+```
+
+If those values are placeholders, SOS records are still created and SMS alerts are marked `SKIPPED`.
 
 ## Run Commands
 
@@ -139,6 +157,7 @@ GET  /api/auth/me
 PUT  /api/auth/guardian-contacts
 POST /api/emergencies/sos
 GET  /api/emergencies
+POST /api/emergencies/:emergencyId/retry-sms
 PATCH /api/emergencies/:emergencyId/resolve
 GET  /api/health
 ```
@@ -182,5 +201,5 @@ GuardianPath-AI/
 
 ## Next Step
 
-Step 8 will add Twilio SMS alerts to trusted guardians.
+Step 9 will add live guardian tracking dashboards.
 "# GuardianPath-AI" 

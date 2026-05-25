@@ -27,8 +27,6 @@ function sanitizeLocation(payload) {
     latitude,
     longitude,
     accuracy: Number.isFinite(accuracy) ? accuracy : null,
-    heading: Number.isFinite(Number(payload?.heading)) ? Number(payload.heading) : null,
-    speed: Number.isFinite(Number(payload?.speed)) ? Number(payload.speed) : null,
     updatedAt: new Date(),
   };
 }
@@ -120,9 +118,20 @@ export function initializeSocketServer(httpServer) {
       }
 
       try {
-        await User.findByIdAndUpdate(userId, {
-          currentLocation: location,
-        });
+        const updatedUser = await User.findByIdAndUpdate(
+          userId,
+          {
+            $set: {
+              currentLocation: location,
+            },
+          },
+          { new: true },
+        );
+
+        if (!updatedUser) {
+          ack?.({ success: false, message: 'User was not found for live tracking' });
+          return;
+        }
 
         const eventPayload = {
           userId,
@@ -133,8 +142,9 @@ export function initializeSocketServer(httpServer) {
         socket.to(userRoom).emit('location-update', eventPayload);
         io.to(guardianRoom).emit('location-update', eventPayload);
         ack?.({ success: true, location });
-      } catch {
-        ack?.({ success: false, message: 'Unable to save live location' });
+      } catch (error) {
+        console.error('Live location save failed:', error.message);
+        ack?.({ success: false, message: error.message || 'Unable to save live location' });
       }
     });
 

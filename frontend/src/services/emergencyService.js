@@ -10,6 +10,11 @@ export async function resolveEmergencyRequest(emergencyId, status = 'RESOLVED') 
   return data;
 }
 
+export async function retryEmergencySmsRequest(emergencyId) {
+  const { data } = await apiClient.post(`/emergencies/${emergencyId}/retry-sms`);
+  return data;
+}
+
 export async function getEmergencyHistoryRequest() {
   const { data } = await apiClient.get('/emergencies');
   return data;
