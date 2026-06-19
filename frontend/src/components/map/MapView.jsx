@@ -64,6 +64,7 @@ function MapView({ destination, location, riskZones = [], routes = [], selectedR
   const riskLayerRef = useRef(null);
   const hasCenteredRef = useRef(false);
   const leafletRef = useRef(null);
+  const lastBoundsKeyRef = useRef('');
   const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
@@ -195,10 +196,16 @@ function MapView({ destination, location, riskZones = [], routes = [], selectedR
     }
 
     if (routes.length > 0) {
-      const bounds = L.latLngBounds(routes.flatMap((route) => route.geometry));
-      mapRef.current.fitBounds(bounds, {
-        padding: [28, 28],
-      });
+      const boundsKey = `${destination?.latitude}_${destination?.longitude}_${routes.length}`;
+      if (lastBoundsKeyRef.current !== boundsKey) {
+        const bounds = L.latLngBounds(routes.flatMap((route) => route.geometry));
+        mapRef.current.fitBounds(bounds, {
+          padding: [28, 28],
+        });
+        lastBoundsKeyRef.current = boundsKey;
+      }
+    } else {
+      lastBoundsKeyRef.current = '';
     }
   }, [destination, routes, selectedRouteId]);
 
