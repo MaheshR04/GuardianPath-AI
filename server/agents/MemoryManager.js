@@ -14,6 +14,7 @@ class MemoryManager {
         movementStatus: 'UNKNOWN',
         stationaryDurationSeconds: 0,
         reasoningLogs: [],
+        toolCalls: [],
         lastUpdated: new Date(),
       });
     }
@@ -87,6 +88,25 @@ class MemoryManager {
   getReasoningLogs(userId) {
     const memory = this.getMemory(userId);
     return memory.reasoningLogs || [];
+  }
+
+  addToolCall(userId, toolCall) {
+    const memory = this.getMemory(userId);
+    if (!memory.toolCalls) {
+      memory.toolCalls = [];
+    }
+    memory.toolCalls.push({
+      timestamp: new Date().toISOString(),
+      ...toolCall,
+    });
+    if (memory.toolCalls.length > 20) {
+      memory.toolCalls.shift();
+    }
+  }
+
+  getToolCalls(userId) {
+    const memory = this.getMemory(userId);
+    return memory.toolCalls || [];
   }
 
   clearMemory(userId) {

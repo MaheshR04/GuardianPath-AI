@@ -628,6 +628,23 @@ function GuardianDashboardPage() {
                               <span className="text-slate-200">{details.text}</span>
                             </div>
                           ))}
+
+                          {reasoningLogs[reasoningLogs.length - 1].toolCalls && reasoningLogs[reasoningLogs.length - 1].toolCalls.length > 0 && (
+                            <div className="mt-4 border-t border-slate-800 pt-3">
+                              <span className="text-slate-400 font-bold tracking-wider uppercase text-[9px] block mb-2">Executed Tools (Registry Calls)</span>
+                              <div className="space-y-1.5 font-mono text-[10px]">
+                                {reasoningLogs[reasoningLogs.length - 1].toolCalls.map((tc, idx) => (
+                                  <div key={idx} className="flex flex-wrap items-center gap-1.5 border-l-2 border-slate-700 pl-2 py-0.5">
+                                    <span className="text-amber-500 font-bold">🛠️ {tc.toolName}</span>
+                                    <span className={tc.status === 'SUCCESS' ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
+                                      {tc.status}
+                                    </span>
+                                    <span className="text-slate-500">({tc.durationMs}ms)</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <p className="text-slate-500 italic py-20 text-center">Awaiting telemetry logs from Safety Agent...</p>
@@ -654,6 +671,16 @@ function GuardianDashboardPage() {
                               <div><span className="text-cyan-600 font-bold uppercase text-[9px] mr-1">[OBS]</span> <span className="text-slate-700">{log.observation}</span></div>
                               <div><span className="text-amber-600 font-bold uppercase text-[9px] mr-1">[REA]</span> <span className="text-slate-700">{log.reasoning}</span></div>
                               <div><span className="text-emerald-600 font-bold uppercase text-[9px] mr-1">[OUT]</span> <span className="text-slate-700">{log.result}</span></div>
+                              
+                              {log.toolCalls && log.toolCalls.length > 0 && (
+                                <div className="mt-2 pt-1 border-t border-slate-100 flex flex-wrap gap-1">
+                                  {log.toolCalls.map((tc, tcIdx) => (
+                                    <span key={tcIdx} className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-mono leading-none border ${tc.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                      🛠️ {tc.toolName} ({tc.durationMs}ms)
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))
