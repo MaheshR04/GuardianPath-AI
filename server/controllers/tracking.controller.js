@@ -36,3 +36,36 @@ export const getTrackingSnapshot = asyncHandler(async (req, res) => {
     },
   });
 });
+
+export const getTrackedUsers = asyncHandler(async (req, res) => {
+  const requesterPhone = req.user.phoneNumber ? req.user.phoneNumber.replace(/\D/g, '') : '';
+
+  if (!requesterPhone) {
+    return res.status(200).json({
+      success: true,
+      users: [],
+    });
+  }
+
+  const allUsersWithGuardians = await User.find({
+    guardianContacts: { $exists: true, $not: { $size: 0 } },
+  });
+
+  const trackedUsers = allUsersWithGuardians.filter((u) => {
+    return u.guardianContacts.some((g) => {
+      const normalizedGPhone = g.phoneNumber ? g.phoneNumber.replace(/\D/g, '') : '';
+      return normalizedGPhone === requesterPhone;
+    });
+  });
+
+  res.status(200).json({
+    success: true,
+    users: trackedUsers.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      phoneNumber: u.phoneNumber,
+      currentLocation: u.currentLocation,
+    })),
+  });
+});
+

@@ -28,6 +28,9 @@ function Header() {
               <NavLink to="/dashboard" className={linkClass}>
                 Dashboard
               </NavLink>
+              <NavLink to="/guardian" className={linkClass}>
+                Guardian Portal
+              </NavLink>
               <span className="hidden text-sm font-medium text-slate-500 sm:inline">{user?.name}</span>
               <button
                 type="button"
