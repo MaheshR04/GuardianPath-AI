@@ -54,6 +54,22 @@ function DashboardPage() {
     token,
   });
   const [guardianContacts, setGuardianContacts] = useState(user?.guardianContacts || []);
+  const [agentTelemetry, setAgentTelemetry] = useState(null);
+
+  useEffect(() => {
+    if (!isTracking) {
+      setAgentTelemetry(null);
+      return undefined;
+    }
+
+    const handleAdvisory = (event) => {
+      setAgentTelemetry(event.detail);
+    };
+
+    window.addEventListener('agent-advisory', handleAdvisory);
+    return () => window.removeEventListener('agent-advisory', handleAdvisory);
+  }, [isTracking]);
+
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -190,8 +206,85 @@ function DashboardPage() {
         </div>
       ) : null}
 
+      {isTracking && (
+        <div className="mt-8 rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-600"></span>
+              </span>
+              <div>
+                <h3 className="text-lg font-bold text-slate-950">Safety Agent HUD</h3>
+                <p className="text-xs text-slate-500 mt-0.5">AI-powered risk intelligence monitoring active.</p>
+              </div>
+            </div>
+
+            {agentTelemetry ? (
+              <div className="flex flex-wrap gap-4 text-sm sm:items-center">
+                <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-1.5 flex items-center gap-2">
+                  <span className="font-semibold text-slate-500">Status:</span>
+                  <span className={`font-bold px-2 py-0.5 rounded text-xs ${
+                    agentTelemetry.status === 'CRITICAL' ? 'bg-red-600 text-white animate-pulse' :
+                    agentTelemetry.status === 'WARNING' ? 'bg-orange-500 text-white' :
+                    agentTelemetry.status === 'ADVISORY' ? 'bg-amber-100 text-amber-800' :
+                    'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {agentTelemetry.status}
+                  </span>
+                </div>
+
+                <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-1.5 flex items-center gap-2">
+                  <span className="font-semibold text-slate-500">Movement:</span>
+                  <span className="font-bold text-slate-900 capitalize">
+                    {agentTelemetry.movement?.status?.toLowerCase() || 'calculating...'}
+                    {agentTelemetry.movement?.status === 'STATIONARY' && agentTelemetry.movement?.stationaryDurationSeconds > 10 && (
+                      <span className="text-xs text-slate-500 font-medium ml-1">
+                        ({Math.round(agentTelemetry.movement.stationaryDurationSeconds)}s)
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-1.5 flex items-center gap-2">
+                  <span className="font-semibold text-slate-500">Threat:</span>
+                  <span className="font-mono font-bold text-slate-950">{agentTelemetry.threatScore}/100</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 font-medium italic">Awaiting first update loop...</p>
+            )}
+          </div>
+
+          {agentTelemetry && (
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-medium text-slate-700">{agentTelemetry.reason}</p>
+                {agentTelemetry.status !== 'NORMAL' && (
+                  <p className="text-xs font-bold text-amber-600 bg-amber-50 rounded px-2.5 py-1 animate-pulse">
+                    ⚠️ Advice: Keep moving and head to well-lit public corridors.
+                  </p>
+                )}
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
+                <div
+                  className={`h-1.5 transition-all duration-500 ${
+                    agentTelemetry.threatScore >= 75 ? 'bg-red-600' :
+                    agentTelemetry.threatScore >= 45 ? 'bg-orange-500' :
+                    agentTelemetry.threatScore >= 20 ? 'bg-amber-500' :
+                    'bg-brand-500'
+                  }`}
+                  style={{ width: `${agentTelemetry.threatScore}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mt-8">
         <SosPanel
+
           dangerAssessment={dangerAssessment}
           isTracking={isTracking}
           location={location}

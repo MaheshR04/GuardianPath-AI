@@ -102,6 +102,70 @@ export function calculateDeviationRisk(location, activeRoute) {
   return 0;
 }
 
+export function analyzeMovement(memory) {
+  const history = memory.locationHistory || [];
+  if (history.length < 2) {
+    return {
+      status: 'UNKNOWN',
+      speed: 0,
+      stationaryDurationSeconds: 0,
+    };
+  }
+
+  const current = history[history.length - 1];
+  const previous = history[history.length - 2];
+
+  const distance = getDistanceMeters(current, previous);
+  const timeDeltaSeconds = (new Date(current.timestamp) - new Date(previous.timestamp)) / 1000;
+
+  let calculatedSpeed = 0;
+  if (timeDeltaSeconds > 0) {
+    calculatedSpeed = distance / timeDeltaSeconds;
+  }
+
+  const speed = (typeof current.speed === 'number' && current.speed >= 0) 
+    ? current.speed 
+    : calculatedSpeed;
+
+  let status = 'UNKNOWN';
+  if (speed < 0.5) {
+    status = 'STATIONARY';
+  } else if (speed < 2.5) {
+    status = 'WALKING';
+  } else if (speed < 7.0) {
+    status = 'RUNNING';
+  } else {
+    status = 'VEHICLE';
+  }
+
+  let stationaryDuration = memory.stationaryDurationSeconds || 0;
+  if (status === 'STATIONARY') {
+    stationaryDuration += timeDeltaSeconds > 0 ? timeDeltaSeconds : 5;
+  } else {
+    stationaryDuration = 0;
+  }
+
+  memory.movementStatus = status;
+  memory.stationaryDurationSeconds = stationaryDuration;
+
+  return {
+    status,
+    speed,
+    stationaryDurationSeconds: stationaryDuration,
+  };
+}
+
+export function calculateImmobilityRisk(movement, crimeScore) {
+  if (
+    movement.status === 'STATIONARY' &&
+    crimeScore > 0 &&
+    movement.stationaryDurationSeconds > 45
+  ) {
+    return 30; // 30-point immobility risk penalty
+  }
+  return 0;
+}
+
 export function analyzeAllRisks(memory) {
   const latestLocation = memory.locationHistory[memory.locationHistory.length - 1];
   const battery = memory.battery;
@@ -112,11 +176,18 @@ export function analyzeAllRisks(memory) {
   const temporalRisk = calculateTemporalRisk();
   const deviationRisk = calculateDeviationRisk(latestLocation, activeRoute);
 
+  const movement = analyzeMovement(memory);
+  const immobilityRisk = calculateImmobilityRisk(movement, crimeRisk.score);
+
   return {
     crime: crimeRisk,
     battery: batteryRisk,
     temporal: temporalRisk,
     deviation: deviationRisk,
+    movement,
+    immobility: immobilityRisk,
     timestamp: new Date(),
+    location: latestLocation,
   };
 }
+

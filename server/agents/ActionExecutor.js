@@ -23,11 +23,20 @@ export async function executeSafetyAction(userId, user, evaluation) {
       status,
       threatScore,
       reason,
+      movement: riskAnalysis?.movement || { status: 'UNKNOWN', speed: 0, stationaryDurationSeconds: 0 },
+      breakdown: {
+        crime: riskAnalysis?.crime?.score || 0,
+        battery: riskAnalysis?.battery || 0,
+        temporal: riskAnalysis?.temporal || 0,
+        deviation: riskAnalysis?.deviation || 0,
+        immobility: riskAnalysis?.immobility || 0,
+      },
       timestamp: new Date().toISOString(),
     };
     io.to(userRoom).emit('agent-advisory', payload);
     io.to(guardianRoom).emit('agent-advisory', payload);
   }
+
 
   if (status === 'CRITICAL') {
     const activeEmergency = await Emergency.findOne({

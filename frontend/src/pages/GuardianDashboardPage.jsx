@@ -90,6 +90,7 @@ function GuardianDashboardPage() {
   const [activeSos, setActiveSos] = useState(null);
   const [activeDanger, setActiveDanger] = useState(null);
   const [userDisconnectedAlert, setUserDisconnectedAlert] = useState(false);
+  const [agentAdvisory, setAgentAdvisory] = useState(null);
 
   const selectedUserRef = useRef(selectedUser);
 
@@ -124,9 +125,12 @@ function GuardianDashboardPage() {
       setActiveSos(null);
       setActiveDanger(null);
       setUserDisconnectedAlert(false);
+      setAgentAdvisory(null);
       disconnectSocket();
       return undefined;
     }
+
+    setAgentAdvisory(null);
 
     // Fetch initial snapshot first
     const loadSnapshot = async () => {
@@ -216,6 +220,11 @@ function GuardianDashboardPage() {
       setUserDisconnectedAlert(true);
     };
 
+    const handleAgentAdvisory = (payload) => {
+      if (payload.userId !== selectedUserRef.current?._id) return;
+      setAgentAdvisory(payload);
+    };
+
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect_error', handleConnectError);
@@ -223,6 +232,7 @@ function GuardianDashboardPage() {
     socket.on('danger-alert', handleDangerAlert);
     socket.on('sos-alert', handleSosAlert);
     socket.on('user-disconnected', handleUserDisconnected);
+    socket.on('agent-advisory', handleAgentAdvisory);
 
     setSocketStatus(socket.connected ? 'connected' : 'connecting');
     socket.connect();
@@ -235,9 +245,11 @@ function GuardianDashboardPage() {
       socket.off('danger-alert', handleDangerAlert);
       socket.off('sos-alert', handleSosAlert);
       socket.off('user-disconnected', handleUserDisconnected);
+      socket.off('agent-advisory', handleAgentAdvisory);
       disconnectSocket();
     };
   }, [selectedUser, token]);
+
 
   const dangerAssessment = useMemo(() => {
     if (!trackingData?.currentLocation) {
@@ -484,8 +496,83 @@ function GuardianDashboardPage() {
                     </div>
                   )}
 
+                  {agentAdvisory && (
+                    <div className="mt-5 border-t border-slate-100 pt-4 space-y-4">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Safety Agent Telemetry
+                      </h4>
+                      <div className="text-xs space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">Movement Status</span>
+                          <span className="font-bold text-slate-800 capitalize">
+                            {agentAdvisory.movement?.status?.toLowerCase() || 'unknown'}
+                            {agentAdvisory.movement?.status === 'STATIONARY' && agentAdvisory.movement?.stationaryDurationSeconds > 10 && (
+                              <span className="text-[10px] text-slate-400 font-medium ml-1">
+                                ({Math.round(agentAdvisory.movement.stationaryDurationSeconds)}s)
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500 font-medium">Threat Level</span>
+                            <span className="font-bold font-mono text-slate-900">
+                              {agentAdvisory.threatScore}/100
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                            <div
+                              className={`h-1 transition-all duration-300 ${
+                                agentAdvisory.threatScore >= 75 ? 'bg-red-600' :
+                                agentAdvisory.threatScore >= 45 ? 'bg-orange-500' :
+                                agentAdvisory.threatScore >= 20 ? 'bg-amber-500' :
+                                'bg-brand-500'
+                              }`}
+                              style={{ width: `${agentAdvisory.threatScore}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {agentAdvisory.breakdown && (
+                          <div className="rounded bg-slate-50 p-2.5 space-y-2 border border-slate-100">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Hazard Factors
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500">Crime Proximity</span>
+                              <span className="font-bold font-mono text-slate-700">
+                                {agentAdvisory.breakdown.crime || 0}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500">Device Battery</span>
+                              <span className="font-bold font-mono text-slate-700">
+                                {agentAdvisory.breakdown.battery || 0}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500">Route Deviation</span>
+                              <span className="font-bold font-mono text-slate-700">
+                                {agentAdvisory.breakdown.deviation || 0}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500">Immobility Penalty</span>
+                              <span className="font-bold font-mono text-slate-700">
+                                {agentAdvisory.breakdown.immobility || 0}%
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => setSelectedUser(null)}
+
                     className="mt-6 w-full rounded-md border border-slate-300 bg-white py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
                   >
                     Stop Tracking

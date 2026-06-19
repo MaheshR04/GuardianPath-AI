@@ -11,11 +11,14 @@ class MemoryManager {
         battery: { level: null, charging: null },
         activeRoute: null,
         reflections: [],
+        movementStatus: 'UNKNOWN',
+        stationaryDurationSeconds: 0,
         lastUpdated: new Date(),
       });
     }
     return this.memories.get(userId);
   }
+
 
   updateLocation(userId, location) {
     const memory = this.getMemory(userId);
